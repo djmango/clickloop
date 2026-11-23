@@ -142,3 +142,17 @@ differential: 51 agreed, 0 differed of 51
 ## Licence
 
 MIT.
+
+## What was verified
+
+Every claim below was produced by running the binary, not by inspection.
+
+| Platform | Built | Ran | Input delivered |
+| --- | --- | --- | --- |
+| macOS (arm64) | `cargo build --release` | yes, banner and dry run | blocked on this machine: no Accessibility grant for any process the tool starts from here |
+| Linux (x86-64) | yes, ELF | yes | yes: three key presses arrived in `xev`, and a `ctrl+shift+s` chord arrived with the modifier state going `0x0`, `0x4`, `0x5` on the key press and unwinding in reverse |
+| Linux clicks | yes | yes | yes: left and right button press and release both arrived |
+| Windows (x86-64) | yes, PE32+ importing `USER32` and `HID.DLL` | yes, under Wine | yes: a real run sent keys through `SendInput` and exited clean, with parsing, chords, the key table and error text all matching |
+
+`tests/` holds the scripts that produced this: `linux-send-proof.sh`,
+`linux-chord-click-proof.sh`, `windows-wine-proof.sh` and `differential.py`.
