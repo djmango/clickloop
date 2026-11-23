@@ -27,9 +27,9 @@ impl Theme {
     pub fn dark() -> Self {
         Self {
             bg: rgb(0x0c0d10),
-            panel: rgb(0x15171c),
-            panel_hover: rgb(0x1c1f26),
-            border: rgb(0x24272f),
+            panel: rgb(0x22262e),
+            panel_hover: rgb(0x2e333d),
+            border: rgb(0x3d4351),
             border_strong: rgb(0x333843),
             text: rgb(0xf4f5f7),
             text_muted: rgb(0xb3bac6),
@@ -60,7 +60,7 @@ pub const RADIUS_LG: Pixels = px(16.0);
 
 /// The window size the layout is designed for.
 pub const WINDOW_WIDTH: f32 = 460.0;
-pub const WINDOW_HEIGHT: f32 = 424.0;
+pub const WINDOW_HEIGHT: f32 = 452.0;
 
 /// The same colour with a different opacity.
 pub fn with_alpha(color: Rgba, alpha: f32) -> Rgba {

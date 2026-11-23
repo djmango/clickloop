@@ -116,6 +116,10 @@ one button. The stop key still works while it runs.
 It is built with [GPUI Community Edition](https://github.com/gpui-ce/gpui-ce),
 vendored under `gui/gpui-ce` so the build needs no network beyond crates.io.
 
+The screenshots above are rendered by `gui/examples/screenshot.rs`, which opens
+an off-screen window on the real platform and paints the app's own view, so they
+cannot drift from what the window shows.
+
 ```console
 $ cd gui && cargo build --release    # target/release/clickloop-gui
 ```

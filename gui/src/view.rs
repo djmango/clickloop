@@ -230,7 +230,7 @@ fn header(theme: &Theme, phase: Phase) -> impl IntoElement {
         Phase::Running => (theme.accent, theme.accent),
         Phase::Counting => (theme.text_muted, theme.text_muted),
         Phase::Stopped => (theme.danger, theme.text_muted),
-        Phase::Idle => (theme.text_faint, theme.text_faint),
+        Phase::Idle => (theme.text_muted, theme.text_muted),
     };
     div()
         .flex()
