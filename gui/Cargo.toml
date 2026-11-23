@@ -13,7 +13,8 @@ path = "src/main.rs"
 [dependencies]
 clickloop = { path = ".." }
 gpui = { path = "../gpui-ce/crates/gpui", package = "gpui-ce" }
-gpui_platform = { path = "../gpui-ce/crates/gpui_platform", package = "gpui_ce_platform" }
+# x11: without a display-server feature GPUI panics on Linux at startup.
+gpui_platform = { path = "../gpui-ce/crates/gpui_platform", package = "gpui_ce_platform", features = ["x11"] }
 gpui_elements = { path = "../gpui-ce/crates/gpui_elements", package = "gpui_ce_elements" }
 
 [features]

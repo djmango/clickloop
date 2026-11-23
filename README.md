@@ -106,29 +106,43 @@ is not supported, because neither has a portable Wayland equivalent. X11 is what
 
 ## The window
 
-`clickloop-gui` is a small GPUI window over the same engine. It shows the
-sequence as you type it, offers a few starting points, and runs or stops with
-one button. The stop key still works while it runs.
+`clickloop-gui` is a small GPUI window over the same engine.
+
+- **F5 starts, F6 stops**, globally: the keys work whether or not the window has
+  focus, because one passive listener runs for the life of the app. Click either
+  key in the window to rebind it; the binding is saved and survives a restart.
+- **A progress bar with a prediction.** The bar fills as cycles complete, and the
+  caption says how many of the expected cycles are done and how long is left.
+  Before a run it says what the whole run will do, not just the sequence.
+- **One status, stated once.** The bar and its caption carry the state; there is
+  no second place saying "ready".
+- **History.** The last three sequences sit under the bar, one click to restore,
+  and the full list is behind *History*. It is kept on disk.
+- **Syntax reference.** The *Syntax* link opens a table of the sequence language,
+  drawn from the same source the parser uses.
 
 ![Running](docs/window-running.png)
-![An error](docs/window-error.png)
+![History](docs/window-history.png)
+![Syntax reference](docs/window-reference.png)
 
 It is built with [GPUI Community Edition](https://github.com/gpui-ce/gpui-ce),
-vendored under `gui/gpui-ce` so the build needs no network beyond crates.io.
-
-The screenshots above are rendered by `gui/examples/screenshot.rs`, which opens
-an off-screen window on the real platform and paints the app's own view, so they
-cannot drift from what the window shows.
+vendored under `gpui-ce/` so the build needs no network beyond crates.io.
 
 ```console
 $ cd gui && cargo build --release    # target/release/clickloop-gui
 ```
+
+On Linux, GPUI needs the `x11` feature, which `gui/Cargo.toml` enables, and the
+usual X11 development packages.
 
 To re-render the screenshots from the real view code:
 
 ```console
 $ cd gui && cargo run --example screenshot --features visual-test -- out.png idle
 ```
+
+Pass `running`, `stopped`, `error`, `history` or `reference` for the other
+states.
 
 ## What changed from the Swift original
 

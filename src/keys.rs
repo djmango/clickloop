@@ -8,7 +8,7 @@
 //! `--actions "cmd+s"` keeps working, and new cross-platform spellings
 //! (`win+s`, `super+s`, `f13`, `kp_plus`) are accepted alongside them.
 
-use rdev::Key;
+pub use rdev::{Event, EventType, Key, listen};
 use std::collections::BTreeMap;
 
 /// A parsed key stroke: one key with the modifiers held while it is pressed.

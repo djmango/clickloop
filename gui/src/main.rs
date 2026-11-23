@@ -1,11 +1,14 @@
 //! clickloop-gui: a small window over clickloop.
 
+mod hotkey;
 mod state;
+mod store;
 mod theme;
 mod view;
 
 use gpui::prelude::*;
 use gpui::{App, Bounds, WindowBounds, WindowOptions, div, px, size};
+use hotkey::Router;
 use view::ClickloopWindow;
 
 fn main() {
@@ -33,7 +36,11 @@ fn main() {
                 })),
             |window, cx| {
                 window.set_background_appearance(gpui::WindowBackgroundAppearance::Opaque);
-                cx.new(ClickloopWindow::new)
+                // One global listener for the life of the app, so the hotkeys
+                // work whether or not this window has focus.
+                // Bindings come from disk, so a rebind survives a restart.
+                let router = Router::start(&store::load_bindings());
+                cx.new(|cx| ClickloopWindow::new(router, cx))
             },
         )
         .expect("failed to open the clickloop window");
