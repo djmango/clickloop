@@ -1,0 +1,79 @@
+# Differential cases: one sequence per line, compared between the Swift
+# original and the Rust port. A tab separates the sequence from extra args.
+#
+# Plain keys and defaults.
+1,1,click
+space
+space*3,click
+a,b,c
+
+# Repeats and groups.
+1*2
+1*2,click
+(1,1,click)*3
+((a,b)*2)*3
+((a,b)*2,space)*4
+(a,(b,c))
+(space*2,click)*5
+
+# Waits.
+wait:0.5
+wait:0
+sleep:2
+a,wait:0.25,b
+
+# Modifiers and chords.
+cmd+s
+shift+space
+ctrl+shift+s
+cmd+command+s
+shift
+leftshift
+rightcmd
+fn+f1
+
+# Aliases.
+esc
+enter
+-
+del
+pgup
+
+# Mouse variants.
+click
+right-click
+lclick
+rclick
+
+# Punctuation names and symbols.
+minus,equal
+[   ]
+;
+
+# Function and keypad keys.
+f1
+f12
+keypad_plus
+keypad_enter
+
+# Additions the port makes on purpose: the Swift table stops at f20, and the
+# port goes to f24. Not compared, because the original rejects it by design.
+# f24
+
+# Whitespace handling.
+  1  ,  1  ,  click
+1,  1,click
+
+# Errors, which must match word for word.
+notakey
+(a,b
+()
+a*0
+a)b
+a,,b
+(a,b,c)*100001
+
+# Options exercised alongside a sequence.
+x	y
+x	--stop-key f12
+x	--count 2

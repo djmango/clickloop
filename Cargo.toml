@@ -1,0 +1,33 @@
+[package]
+name = "clickloop"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Repeat a sequence of key presses and mouse clicks, on macOS, Windows and Linux."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/djmango/clickloop"
+homepage = "https://github.com/djmango/clickloop"
+keywords = ["automation", "input", "keyboard", "mouse", "cli"]
+categories = ["command-line-utilities"]
+
+[lib]
+name = "clickloop"
+path = "src/lib.rs"
+
+[[bin]]
+name = "clickloop"
+path = "src/main.rs"
+
+[dependencies]
+# Your own rdev fork: it adds the synthetic-event flag, a non-blocking macOS
+# listener and the FFI-direct backend. Pinned by revision so a build is
+# reproducible and a rewrite of `master` cannot change behaviour under us.
+# Set CLICKLOOP_RDEV to a local checkout to build against an edit.
+rdev = { git = "https://github.com/djmango/rdev", rev = "7726a9b533df81c5763a80da21328e2ec50340ca" }
+ctrlc = "3.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
