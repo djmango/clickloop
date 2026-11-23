@@ -51,10 +51,10 @@ impl Theme {
             accent: rgb(0x4c8dff),
             accent_hover: rgb(0x6ba0ff),
             accent_soft: rgb(0x1e2c44),
-            on_accent: rgb(0xffffff),
+            on_accent: rgb(0x0b1220),
             warn: rgb(0xf0b64a),
             danger: rgb(0xff7d72),
-            track: rgb(0x252b36),
+            track: rgb(0x3d4554),
         }
     }
 }
@@ -68,7 +68,7 @@ pub const RADIUS_KEYCAP: f32 = 5.0;
 /// The window the layout is designed for. Its height is measured from the
 /// render: content plus the bottom padding, so nothing is ever clipped.
 pub const WINDOW_WIDTH: f32 = 440.0;
-pub const WINDOW_HEIGHT: f32 = 468.0;
+pub const WINDOW_HEIGHT: f32 = 392.0;
 
 /// The same colour with a different opacity.
 pub fn with_alpha(color: Rgba, alpha: f32) -> Rgba {

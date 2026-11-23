@@ -330,9 +330,9 @@ impl Render for ClickloopWindow {
                         .pb(px(18.0))
                         .gap(px(13.0))
                         .child(self.panel_header(&theme, cx))
+                        .child(self.hotkey_row(&theme, cx))
                         .child(self.panel_body(&theme, cx))
-                        .child(div().flex_1())
-                        .child(self.panel_footer(&theme, cx)),
+                        .child(div().flex_1()),
                 )
                 .into_any_element()
         }
@@ -386,11 +386,14 @@ impl ClickloopWindow {
     /// place the start/stop keys are stated.
     fn hotkey_row(&self, theme: &Theme, cx: &mut Context<Self>) -> impl IntoElement {
         let capturing = self.router.is_capturing();
-        let live = self.router.is_live();
+        // Two different "live": whether a run is going, and whether the OS
+        // listener is up. Keep the names apart.
+        let running = self.live();
+        let listening = self.router.is_live();
         let hint = match capturing {
             Some(Slot::Start) => "Press any key for start",
             Some(Slot::Stop) => "Press any key for stop",
-            None if !live => "Hotkeys need input permission",
+            None if !listening => "Hotkeys need input permission",
             None => "",
         };
 
@@ -408,6 +411,7 @@ impl ClickloopWindow {
                         "start",
                         &self.bindings.start,
                         capturing == Some(Slot::Start),
+                        running,
                         cx,
                         Slot::Start,
                     ))
@@ -416,6 +420,7 @@ impl ClickloopWindow {
                         "stop",
                         &self.bindings.stop,
                         capturing == Some(Slot::Stop),
+                        false,
                         cx,
                         Slot::Stop,
                     )),
@@ -446,18 +451,29 @@ impl ClickloopWindow {
             0.0
         };
 
-        let caption = if let Some(error) = &self.error {
-            format!("{error}")
-        } else if live {
+        // The caption and the bar read the same denominator: the target the run
+        // froze when it started. A fresh prediction from the form can disagree
+        // with it, which is how "148 of 103" happened.
+        let caption = if live {
             let done = self.cycles();
-            let total = self
+            let frozen = self
+                .run
+                .as_ref()
+                .map(|run| {
+                    run.progress
+                        .target_cycles
+                        .load(std::sync::atomic::Ordering::SeqCst)
+                })
+                .unwrap_or(0);
+            let left = self
                 .run
                 .as_ref()
                 .and_then(|run| run.progress.remaining())
                 .map(format_duration);
-            match (prediction.as_ref().and_then(|p| p.cycles), total) {
-                (Some(expected), Some(left)) => {
-                    format!("{done} of {expected} · {left} left")
+            match (frozen, left) {
+                (n, Some(left)) if n > 0 => format!("{done} of {n} · {left} left"),
+                (n, None) if n > 0 => {
+                    format!("{done} of {n} · {}", format_duration(self.elapsed()))
                 }
                 _ => format!("{done} cycles · {}", format_duration(self.elapsed())),
             }
@@ -610,13 +626,7 @@ impl ClickloopWindow {
                     .text_size(px(14.0))
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .cursor_pointer()
-                    .hover_style(move |style| {
-                        style.bg(if live {
-                            theme.surface_hover
-                        } else {
-                            theme.accent_hover
-                        })
-                    })
+                    .hover_style(move |style| style.bg(theme.accent_hover))
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(|this, _, _, cx| {
@@ -778,10 +788,12 @@ fn sequence_card(
     form: &Form,
     error: &Option<String>,
 ) -> impl IntoElement {
-    let description = match (error, form.preview()) {
-        (Some(error), _) => error.clone(),
-        (None, Ok(actions)) => desc(&actions),
-        (None, Err(problem)) => problem,
+    // An error is stated once, in the progress caption, so it is not repeated
+    // here; this line only describes a sequence that parsed.
+    let description = match form.preview() {
+        Ok(actions) => desc(&actions),
+        Err(problem) if error.is_none() => problem,
+        Err(_) => String::new(),
     };
     let valid = error.is_none() && form.preview().is_ok();
     div()
@@ -835,6 +847,7 @@ fn hotkey_chip(
     label: &'static str,
     value: &str,
     capturing: bool,
+    dimmed: bool,
     cx: &mut Context<ClickloopWindow>,
     slot: Slot,
 ) -> impl IntoElement {
@@ -844,6 +857,7 @@ fn hotkey_chip(
         .items_center()
         .gap(px(6.0))
         .cursor_pointer()
+        .opacity(if dimmed { 0.45 } else { 1.0 })
         .child(
             div()
                 .text_size(px(9.5))
