@@ -54,11 +54,15 @@ fn main() {
             form.actions = "(1,1,click)*5".to_string();
             form.delay = 0.2;
             form.duration = 30.0;
+            // Consistent numbers: with a 0.20s delay each cycle is about
+            // 0.263s, so roughly 114 fit in 30 seconds. At 12s in, about 46
+            // cycles are done. The fixture must not show arithmetic the engine
+            // could not produce.
             Some((
                 state::Phase::Running,
-                148u64,
-                Duration::from_millis(10200),
-                Some((437u64, Duration::from_secs(30))),
+                46u64,
+                Duration::from_millis(12100),
+                Some((114u64, Duration::from_secs(30))),
                 None,
                 None,
             ))
@@ -69,9 +73,9 @@ fn main() {
             form.duration = 30.0;
             Some((
                 state::Phase::Stopped,
-                437,
+                114,
                 Duration::from_secs(30),
-                Some((437, Duration::from_secs(30))),
+                Some((114, Duration::from_secs(30))),
                 Some("cycle count reached".to_string()),
                 None,
             ))

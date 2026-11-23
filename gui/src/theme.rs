@@ -54,7 +54,7 @@ impl Theme {
             on_accent: rgb(0x0b1220),
             warn: rgb(0xf0b64a),
             danger: rgb(0xff7d72),
-            track: rgb(0x3d4554),
+            track: rgb(0x5b657d),
         }
     }
 }

@@ -390,10 +390,13 @@ impl ClickloopWindow {
         // listener is up. Keep the names apart.
         let running = self.live();
         let listening = self.router.is_live();
+        // Only a real absence is worth saying. On macOS the OS can grant a tap
+        // that still delivers nothing without Accessibility, so the honest
+        // message is about the listener, not about a keypress.
         let hint = match capturing {
             Some(Slot::Start) => "Press any key for start",
             Some(Slot::Stop) => "Press any key for stop",
-            None if !listening => "Hotkeys need input permission",
+            None if !listening => "Hotkeys unavailable",
             None => "",
         };
 
@@ -471,7 +474,7 @@ impl ClickloopWindow {
                 .and_then(|run| run.progress.remaining())
                 .map(format_duration);
             match (frozen, left) {
-                (n, Some(left)) if n > 0 => format!("{done} of {n} · {left} left"),
+                (n, Some(left)) if n > 0 => format!("{done} of {n} cycles · {left} left"),
                 (n, None) if n > 0 => {
                     format!("{done} of {n} · {}", format_duration(self.elapsed()))
                 }
@@ -615,14 +618,12 @@ impl ClickloopWindow {
                     .items_center()
                     .justify_center()
                     .rounded(px(RADIUS_CARD))
-                    .bg(if live { theme.surface } else { theme.accent })
+                    // One live action. During a run that is Stop, so it takes
+                    // the accent; Run is the accent when nothing is running.
+                    .bg(theme.accent)
                     .border_1()
-                    .border_color(if live {
-                        theme.line_strong
-                    } else {
-                        theme.accent
-                    })
-                    .text_color(if live { theme.text } else { theme.on_accent })
+                    .border_color(theme.accent)
+                    .text_color(theme.on_accent)
                     .text_size(px(14.0))
                     .font_weight(gpui::FontWeight::SEMIBOLD)
                     .cursor_pointer()
@@ -947,7 +948,7 @@ fn progress_bar(theme: &Theme, fraction: f32, live: bool, ok: bool) -> impl Into
     };
     div()
         .w_full()
-        .h(px(3.0))
+        .h(px(5.0))
         .rounded_full()
         .bg(theme.track)
         .overflow_hidden()
