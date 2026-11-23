@@ -156,6 +156,7 @@ recently sent keys are discounted by time.
 ```console
 $ cargo test                     # unit tests: parser, keys, control, args
 $ python3 tests/differential.py  # compare against the Swift original
+$ ./tests/ci-local.sh            # every CI step, on this machine
 ```
 
 `tests/differential.py` runs both programs in dry-run mode over
