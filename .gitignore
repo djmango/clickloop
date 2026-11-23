@@ -1,3 +1,6 @@
 /target
-# Differential test artefacts
-__pycache__/
+# The window's own build output; gui/gpui-ce is a vendored dependency, not a build.
+/gui/target
+# Release binaries are attached to a GitHub release, not tracked in the tree.
+/dist
+/dist-pkg

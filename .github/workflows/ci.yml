@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    name: build and test (${{ matrix.os }})
+    name: cli (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -24,7 +24,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxtst-dev libxi-dev libxcb1-dev \
-            libxdo-dev libxproto-dev pkg-config
+            x11proto-dev libxext-dev pkg-config
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -44,6 +44,44 @@ jobs:
       - name: Every key name parses
         run: cargo run --release -- --list-keys
 
+  gui:
+    name: gui (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The window vendors GPUI Community Edition, which needs its own platform
+      # libraries on top of the X11 headers clickloop itself wants.
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config cmake \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev \
+            libxcb-xinput-dev libegl1-mesa-dev libgles2-mesa-dev \
+            libglib2.0-dev libfontconfig-dev libxtst-dev libxi-dev \
+            libxcb1-dev x11proto-dev libxext-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # GPUI Community Edition requires 1.95 or newer.
+          toolchain: "1.95"
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: gui
+
+      - name: Build the window
+        working-directory: gui
+        run: cargo build --release
+
   fmt:
     name: rustfmt and clippy
     runs-on: ubuntu-latest
@@ -55,7 +93,8 @@ jobs:
       - name: Install X11 development headers
         run: |
           sudo apt-get update
-          sudo apt-get install -y libx11-dev libxtst-dev libxi-dev libxcb1-dev libxproto-dev pkg-config
+          sudo apt-get install -y libx11-dev libxtst-dev libxi-dev libxcb1-dev \
+            x11proto-dev libxext-dev pkg-config
       - name: Format
         run: cargo fmt --check
       - name: Clippy

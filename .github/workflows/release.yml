@@ -1,7 +1,7 @@
 name: release
 
-# Builds a binary for each supported platform and attaches it to a release.
-# Triggered by pushing a tag such as v1.0.0, or by running it by hand.
+# Builds a binary for each supported platform and attaches them to a release.
+# Triggered by pushing a tag such as v1.0.0, or by hand from the Actions tab.
 on:
   push:
     tags: ["v*"]
@@ -11,27 +11,29 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: ${{ matrix.target }}
+  cli:
+    name: cli ${{ matrix.archive }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Apple silicon
           - os: macos-latest
             target: aarch64-apple-darwin
             archive: clickloop-macos-arm64
-          # Intel Mac
+            binary: clickloop
           - os: macos-latest
             target: x86_64-apple-darwin
             archive: clickloop-macos-x64
+            binary: clickloop
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             archive: clickloop-linux-x64
+            binary: clickloop
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             archive: clickloop-windows-x64
+            binary: clickloop.exe
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +47,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libx11-dev libxtst-dev libxi-dev libxcb1-dev \
-            libxproto-dev pkg-config
+            x11proto-dev libxext-dev pkg-config
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
@@ -55,10 +57,11 @@ jobs:
         env:
           ARCHIVE: ${{ matrix.archive }}
           TARGET: ${{ matrix.target }}
+          BINARY: ${{ matrix.binary }}
         run: |
           mkdir -p dist
-          cp "target/$TARGET/release/clickloop" dist/
-          cp README.md dist/
+          cp "target/$TARGET/release/$BINARY" "dist/$BINARY"
+          cp README.md LICENSE dist/
           tar -czf "$ARCHIVE.tar.gz" -C dist .
           shasum -a 256 "$ARCHIVE.tar.gz" > "$ARCHIVE.tar.gz.sha256"
 
@@ -67,14 +70,15 @@ jobs:
         env:
           ARCHIVE: ${{ matrix.archive }}
           TARGET: ${{ matrix.target }}
+          BINARY: ${{ matrix.binary }}
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item "target/$env:TARGET/release/clickloop.exe" dist/
-          Copy-Item README.md dist/
+          Copy-Item "target/$env:TARGET/release/$env:BINARY" dist/
+          Copy-Item README.md LICENSE dist/
           Compress-Archive -Path dist/* -DestinationPath "$env:ARCHIVE.zip"
-          (Get-FileHash "$env:ARCHIVE.zip" -Algorithm SHA256).Hash.ToLower() +
-            "  $env:ARCHIVE.zip" | Out-File "$env:ARCHIVE.zip.sha256"
+          $hash = (Get-FileHash "$env:ARCHIVE.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $env:ARCHIVE.zip" | Out-File "$env:ARCHIVE.zip.sha256"
 
       - name: Upload artefacts
         uses: actions/upload-artifact@v4
@@ -86,9 +90,76 @@ jobs:
             *.zip
             *.zip.sha256
 
+  gui:
+    name: window ${{ matrix.archive }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            archive: clickloop-window-macos-arm64
+          - os: ubuntu-latest
+            archive: clickloop-window-linux-x64
+          - os: windows-latest
+            archive: clickloop-window-windows-x64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config cmake \
+            libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libx11-dev \
+            libxcb-shape0-dev libxcb-xfixes0-dev libxcb-randr0-dev \
+            libxcb-xinput-dev libegl1-mesa-dev libgles2-mesa-dev \
+            libglib2.0-dev libfontconfig-dev libxtst-dev libxi-dev \
+            libxcb1-dev x11proto-dev libxext-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.95"
+
+      - name: Build the window
+        working-directory: gui
+        run: cargo build --release
+
+      - name: Package (Unix)
+        if: runner.os != 'Windows'
+        env:
+          ARCHIVE: ${{ matrix.archive }}
+        run: |
+          mkdir -p dist
+          cp gui/target/release/clickloop-gui dist/
+          cp README.md LICENSE dist/
+          tar -czf "$ARCHIVE.tar.gz" -C dist .
+          shasum -a 256 "$ARCHIVE.tar.gz" > "$ARCHIVE.tar.gz.sha256"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        env:
+          ARCHIVE: ${{ matrix.archive }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item "gui/target/release/clickloop-gui.exe" dist/
+          Copy-Item README.md LICENSE dist/
+          Compress-Archive -Path dist/* -DestinationPath "$env:ARCHIVE.zip"
+
+      - name: Upload artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: |
+            *.tar.gz
+            *.tar.gz.sha256
+            *.zip
+
   publish:
     name: publish release
-    needs: build
+    needs: [cli, gui]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:

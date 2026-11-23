@@ -1,0 +1,29 @@
+[package]
+name = "clickloop-gui"
+version = "1.0.0"
+edition = "2024"
+rust-version = "1.95"
+description = "A small desktop window for clickloop, built with GPUI."
+publish = false
+
+[[bin]]
+name = "clickloop-gui"
+path = "src/main.rs"
+
+[dependencies]
+clickloop = { path = ".." }
+gpui = { path = "../gpui-ce/crates/gpui", package = "gpui-ce" }
+gpui_platform = { path = "../gpui-ce/crates/gpui_platform", package = "gpui_ce_platform" }
+gpui_elements = { path = "../gpui-ce/crates/gpui_elements", package = "gpui_ce_elements" }
+
+[features]
+# Screenshot capture for the README, through the real macOS platform.
+visual-test = ["gpui/test-support", "gpui_platform/test-support"]
+
+[[example]]
+name = "screenshot"
+path = "examples/screenshot.rs"
+required-features = ["visual-test"]
+
+[profile.release]
+lto = "thin"

@@ -6,7 +6,13 @@ macOS, Windows and Linux.
 A Rust port of a macOS `auto-click.swift` script. The sequence language and the
 safety behaviour are the original's; the platform layer is a single crate
 ([`rdev`](https://github.com/djmango/rdev)) that maps one key name onto each
-system's own key code.
+system's own key code. The window is built with
+[GPUI Community Edition](https://github.com/gpui-ce/gpui-ce).
+
+![The clickloop window](docs/window.png)
+
+Two ways to use it: a command line tool, and a small window for the same thing.
+Both ship as one binary per platform.
 
 ```console
 $ clickloop
@@ -97,6 +103,28 @@ uses a low-level keyboard hook.
 **Linux** uses X11 only: XTest to send and XRecord to hear the stop key. Wayland
 is not supported, because neither has a portable Wayland equivalent. X11 is what
 `rdev` targets on this platform.
+
+## The window
+
+`clickloop-gui` is a small GPUI window over the same engine. It shows the
+sequence as you type it, offers a few starting points, and runs or stops with
+one button. The stop key still works while it runs.
+
+![Running](docs/window-running.png)
+![An error](docs/window-error.png)
+
+It is built with [GPUI Community Edition](https://github.com/gpui-ce/gpui-ce),
+vendored under `gui/gpui-ce` so the build needs no network beyond crates.io.
+
+```console
+$ cd gui && cargo build --release    # target/release/clickloop-gui
+```
+
+To re-render the screenshots from the real view code:
+
+```console
+$ cd gui && cargo run --example screenshot --features visual-test -- out.png idle
+```
 
 ## What changed from the Swift original
 
