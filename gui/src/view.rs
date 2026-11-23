@@ -3,7 +3,7 @@
 //! Every element is a plain `div` with a token from [`crate::theme`], so the
 //! panel reads as one design. Nothing here needs an icon font or an image.
 
-use crate::state::{describe_actions as desc, start, Form, Phase, RunHandle};
+use crate::state::{Form, Phase, RunHandle, describe_actions as desc, start};
 use crate::theme::*;
 use gpui::prelude::*;
 use gpui::{
@@ -16,7 +16,7 @@ use std::time::Duration;
 /// Ready-made sequences, each one a working phrase.
 const PRESETS: &[(&str, &str)] = &[
     ("Click", "click"),
-    ("Double", "click,click"),
+    ("Default", "1,1,click"),
     ("Keys 1-2-3", "1,2,3"),
     ("Repeat 5", "(1,1,click)*5"),
 ];
@@ -57,10 +57,13 @@ impl ClickloopWindow {
     ) -> Self {
         let progress = crate::state::Progress::default();
         progress.set_phase(phase);
-        progress.cycles.store(cycles, std::sync::atomic::Ordering::SeqCst);
         progress
-            .elapsed_millis
-            .store(elapsed.as_millis() as u64, std::sync::atomic::Ordering::SeqCst);
+            .cycles
+            .store(cycles, std::sync::atomic::Ordering::SeqCst);
+        progress.elapsed_millis.store(
+            elapsed.as_millis() as u64,
+            std::sync::atomic::Ordering::SeqCst,
+        );
         progress.set_reason_for_preview(reason);
         let control = std::sync::Arc::new(clickloop::control::Control::new());
         Self {
@@ -150,16 +153,18 @@ impl ClickloopWindow {
         if !self.is_running() {
             return;
         }
-        self._ticker = Some(cx.spawn(async move |this, cx| loop {
-            cx.background_executor()
-                .timer(Duration::from_millis(120))
-                .await;
-            match this.update(cx, |this, cx| {
-                cx.notify();
-                this.is_running()
-            }) {
-                Ok(true) => {}
-                _ => break,
+        self._ticker = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(120))
+                    .await;
+                match this.update(cx, |this, cx| {
+                    cx.notify();
+                    this.is_running()
+                }) {
+                    Ok(true) => {}
+                    _ => break,
+                }
             }
         }));
     }
@@ -173,10 +178,9 @@ impl ClickloopWindow {
         // The editable box is created once and reused across frames.
         let input_id = ElementId::from("sequence-input");
         let initial = self.form.actions.clone();
-        let state =
-            EditableTextState::use_keyed_init(input_id, window, cx, move |_, _| {
-                StringStorage::from(initial)
-            });
+        let state = EditableTextState::use_keyed_init(input_id, window, cx, move |_, _| {
+            StringStorage::from(initial)
+        });
         if self.input.is_none() {
             self.input = Some(state.clone());
         }
@@ -209,12 +213,23 @@ impl ClickloopWindow {
                     .pb(px(20.0))
                     .gap(px(15.0))
                     .child(header(&theme, phase))
-                    .child(sequence_card(&theme, &state, &preview_line, preview_ok, running))
-                    .child(presets(&theme, running, cx))
+                    .child(sequence_card(
+                        &theme,
+                        &state,
+                        &preview_line,
+                        preview_ok,
+                        running,
+                    ))
+                    .child(presets(&theme, running, &self.form.actions, cx))
                     .child(timing_row(&theme, &self.form))
-                    .child(error_line(&theme, self.error.as_deref()))
                     .child(div().flex_1())
-                    .child(footer(&theme, self.run.as_ref(), running, cx)),
+                    .child(footer(
+                        &theme,
+                        self.run.as_ref(),
+                        running,
+                        self.error.as_deref(),
+                        cx,
+                    )),
             )
     }
 }
@@ -226,11 +241,13 @@ impl Render for ClickloopWindow {
 }
 
 fn header(theme: &Theme, phase: Phase) -> impl IntoElement {
+    // A status should carry colour meaning: accent while live, amber while
+    // counting down, red once stopped, and neutral only when nothing has run.
     let (dot, text) = match phase {
         Phase::Running => (theme.accent, theme.accent),
-        Phase::Counting => (theme.text_muted, theme.text_muted),
+        Phase::Counting => (theme.warn, theme.warn),
         Phase::Stopped => (theme.danger, theme.text_muted),
-        Phase::Idle => (theme.text_muted, theme.text_muted),
+        Phase::Idle => (theme.accent, theme.text_muted),
     };
     div()
         .flex()
@@ -258,8 +275,8 @@ fn header(theme: &Theme, phase: Phase) -> impl IntoElement {
             div()
                 .flex()
                 .items_center()
-                .gap(px(6.0))
-                .px(px(10.0))
+                .gap(px(7.0))
+                .px(px(11.0))
                 .py(px(5.0))
                 .rounded_full()
                 .bg(theme.panel)
@@ -301,7 +318,7 @@ fn sequence_card(
                 .w_full()
                 .px(px(12.0))
                 .py(px(11.0))
-                .rounded(px(10.0))
+                .rounded(px(RADIUS_CARD))
                 .bg(theme.panel)
                 .border_1()
                 .border_color(theme.border)
@@ -333,28 +350,52 @@ fn sequence_card(
         )
 }
 
-fn presets(theme: &Theme, running: bool, cx: &mut Context<ClickloopWindow>) -> impl IntoElement {
+fn presets(
+    theme: &Theme,
+    running: bool,
+    current: &str,
+    cx: &mut Context<ClickloopWindow>,
+) -> impl IntoElement {
     let mut row = div().flex().flex_col().gap(px(7.0));
     if !running {
         row = row.child(section_label(theme, "START FROM"));
     }
+    let active = current.trim();
     let mut chips = div().flex().flex_wrap().gap(px(6.0));
     for (label, sequence) in PRESETS {
+        // A chip marks itself when the field holds exactly its sequence, so the
+        // preset row doubles as a readout of where the sequence came from.
+        let selected = active == *sequence;
         let sequence = sequence.to_string();
         chips = chips.child(
             div()
                 .id(SharedString::from(format!("preset-{label}")))
                 .px(px(10.0))
                 .py(px(5.0))
-                .rounded(px(7.0))
-                .bg(theme.panel)
+                .rounded(px(RADIUS_CHIP))
+                .bg(if selected {
+                    theme.accent_soft
+                } else {
+                    theme.panel
+                })
                 .border_1()
-                .border_color(theme.border)
+                .border_color(if selected { theme.accent } else { theme.border })
                 .text_size(px(11.5))
-                .text_color(theme.text_muted)
+                .font_weight(if selected {
+                    gpui::FontWeight::SEMIBOLD
+                } else {
+                    gpui::FontWeight::NORMAL
+                })
+                .text_color(if selected {
+                    theme.accent
+                } else {
+                    theme.text_muted
+                })
                 .cursor_pointer()
                 .when(!running, |this| {
-                    this.hover_style(move |style| style.bg(theme.panel_hover).text_color(theme.text))
+                    this.hover_style(move |style| {
+                        style.bg(theme.panel_hover).text_color(theme.text)
+                    })
                 })
                 .on_mouse_down(
                     MouseButton::Left,
@@ -367,9 +408,22 @@ fn presets(theme: &Theme, running: bool, cx: &mut Context<ClickloopWindow>) -> i
 }
 
 fn timing_row(theme: &Theme, form: &Form) -> impl IntoElement {
+    let stop = if form.stop_key.trim().is_empty() {
+        "none".to_string()
+    } else {
+        form.stop_key.clone()
+    };
     div()
+        .w_full()
+        .px(px(13.0))
+        .py(px(11.0))
+        .rounded(px(RADIUS_CARD))
+        .bg(theme.panel)
+        .border_1()
+        .border_color(theme.border)
         .flex()
-        .gap(px(24.0))
+        .items_end()
+        .gap(px(26.0))
         .child(stat(theme, "DELAY", format_secs(form.delay)))
         .child(stat(
             theme,
@@ -380,22 +434,36 @@ fn timing_row(theme: &Theme, form: &Form) -> impl IntoElement {
                 "no limit".to_string()
             },
         ))
-        .child(stat(
-            theme,
-            "STOP",
-            if form.stop_key.trim().is_empty() {
-                "none".to_string()
-            } else {
-                form.stop_key.clone()
-            },
-        ))
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(3.0))
+                .child(section_label(theme, "STOP"))
+                .child(keycap(theme, &stop)),
+        )
+}
+
+/// A key name, drawn as a keycap so it reads as a key and not as prose.
+fn keycap(theme: &Theme, name: &str) -> impl IntoElement {
+    div()
+        .px(px(7.0))
+        .py(px(2.0))
+        .rounded(px(RADIUS_KEYCAP))
+        .bg(theme.keycap)
+        .border_1()
+        .border_color(theme.border_strong)
+        .text_size(px(12.5))
+        .font_weight(gpui::FontWeight::MEDIUM)
+        .text_color(theme.text_muted)
+        .child(SharedString::from(name.to_string()))
 }
 
 fn stat(theme: &Theme, label: &'static str, value: String) -> impl IntoElement {
     div()
         .flex()
         .flex_col()
-        .gap(px(2.0))
+        .gap(px(3.0))
         .child(section_label(theme, label))
         .child(
             div()
@@ -405,45 +473,11 @@ fn stat(theme: &Theme, label: &'static str, value: String) -> impl IntoElement {
         )
 }
 
-fn error_line(theme: &Theme, message: Option<&str>) -> impl IntoElement {
-    div().when_some(message.map(str::to_string), |this, message| {
-        this.child(
-            div()
-                .flex()
-                .items_start()
-                .gap(px(8.0))
-                .child(
-                    div()
-                        .mt(px(1.0))
-                        .size(px(13.0))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .rounded_full()
-                        .bg(theme.danger)
-                        .child(
-                            div()
-                                .text_size(px(9.0))
-                                .text_color(rgb(0x0c0d10))
-                                .font_weight(gpui::FontWeight::BOLD)
-                                .child("!"),
-                        ),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .text_size(px(11.5))
-                        .text_color(theme.danger)
-                        .child(SharedString::from(message)),
-                ),
-        )
-    })
-}
-
 fn footer(
     theme: &Theme,
     run: Option<&RunHandle>,
     running: bool,
+    error: Option<&str>,
     cx: &mut Context<ClickloopWindow>,
 ) -> impl IntoElement {
     let (cycles, elapsed_secs, reason) = match run {
@@ -455,10 +489,15 @@ fn footer(
         None => (0, 0.0, None),
     };
 
-    let status = match &reason {
-        Some(reason) => format!("Stopped: {reason}"),
-        None if running => "Working. Press the stop key to end it.".to_string(),
-        None => "Ready when you are".to_string(),
+    // One status line: an error outranks a run report, which outranks the idle text.
+    let (status, status_color) = match (error, &reason) {
+        (Some(error), _) => (error.to_string(), theme.danger),
+        (None, Some(reason)) => (format!("Stopped: {reason}"), theme.text_muted),
+        (None, None) if running => (
+            "Working. Press the stop key to end it.".to_string(),
+            theme.text_muted,
+        ),
+        (None, None) => ("Ready when you are".to_string(), theme.text_muted),
     };
 
     div()
@@ -474,7 +513,7 @@ fn footer(
                     div()
                         .flex_1()
                         .text_size(px(11.5))
-                        .text_color(theme.text_muted)
+                        .text_color(status_color)
                         .child(SharedString::from(status)),
                 )
                 .child(
@@ -503,7 +542,7 @@ fn footer(
                 .flex()
                 .items_center()
                 .justify_center()
-                .rounded(px(11.0))
+                .rounded(px(RADIUS_CARD))
                 .bg(if running { theme.stop } else { theme.accent })
                 .text_color(if running { theme.text } else { theme.on_accent })
                 .text_size(px(14.5))

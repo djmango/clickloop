@@ -4,10 +4,8 @@ mod state;
 mod theme;
 mod view;
 
-use gpui::{
-    App, Bounds, WindowBounds, WindowOptions, div, px, size,
-};
 use gpui::prelude::*;
+use gpui::{App, Bounds, WindowBounds, WindowOptions, div, px, size};
 use view::ClickloopWindow;
 
 fn main() {

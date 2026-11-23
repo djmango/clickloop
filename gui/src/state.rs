@@ -4,7 +4,7 @@
 //! tool is doing). The repeating happens on a worker thread that drives
 //! `clickloop`'s own engine, so the window stays responsive and can stop it.
 
-use clickloop::control::{wait_seconds, Control, TriggerState};
+use clickloop::control::{Control, TriggerState, wait_seconds};
 use clickloop::keys::{self, Stroke};
 use clickloop::platform::{self, Listener};
 use clickloop::sequence::{self, Action};
@@ -258,10 +258,9 @@ pub fn start(form: &Form) -> Result<RunHandle, String> {
 
             control.bump_cycles();
             progress.cycles.store(control.cycles(), Ordering::SeqCst);
-            progress.elapsed_millis.store(
-                control.elapsed().as_millis() as u64,
-                Ordering::SeqCst,
-            );
+            progress
+                .elapsed_millis
+                .store(control.elapsed().as_millis() as u64, Ordering::SeqCst);
 
             if control.is_stopped() {
                 break;
@@ -272,10 +271,9 @@ pub fn start(form: &Form) -> Result<RunHandle, String> {
         }
 
         progress.set_reason(control.reason());
-        progress.elapsed_millis.store(
-            control.elapsed().as_millis() as u64,
-            Ordering::SeqCst,
-        );
+        progress
+            .elapsed_millis
+            .store(control.elapsed().as_millis() as u64, Ordering::SeqCst);
         progress.set_phase(Phase::Stopped);
     });
 

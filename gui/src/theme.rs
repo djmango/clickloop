@@ -21,6 +21,12 @@ pub struct Theme {
     pub stop: Rgba,
     pub stop_hover: Rgba,
     pub danger: Rgba,
+    /// The fill behind a key name, a shade above a card so it reads as a key.
+    pub keycap: Rgba,
+    /// Amber, for a state that is about to do something.
+    pub warn: Rgba,
+    /// The accent at low strength, for a selected chip's fill.
+    pub accent_soft: Rgba,
 }
 
 impl Theme {
@@ -43,6 +49,9 @@ impl Theme {
             stop: rgb(0x2a2e37),
             stop_hover: rgb(0x363b47),
             danger: rgb(0xff7a6b),
+            keycap: rgb(0x2a2f39),
+            warn: rgb(0xf5b942),
+            accent_soft: rgb(0x2b3320),
         }
     }
 }
@@ -54,13 +63,17 @@ pub const GAP_MD: Pixels = px(16.0);
 pub const GAP_LG: Pixels = px(24.0);
 pub const GAP_XL: Pixels = px(32.0);
 
-pub const RADIUS_SM: Pixels = px(8.0);
-pub const RADIUS_MD: Pixels = px(12.0);
-pub const RADIUS_LG: Pixels = px(16.0);
+// One radius scale. Surfaces and the primary button share RADIUS_CARD; chips
+// and keycaps share RADIUS_CHIP, so there are two roundings, not four.
+pub const RADIUS_CARD: f32 = 10.0;
+pub const RADIUS_CHIP: f32 = 7.0;
+pub const RADIUS_KEYCAP: f32 = 5.0;
 
 /// The window size the layout is designed for.
 pub const WINDOW_WIDTH: f32 = 460.0;
-pub const WINDOW_HEIGHT: f32 = 452.0;
+// Sized to the content: the last element (the Run button, 46 tall) plus the
+// 20 bottom padding. Set by measuring the render, not by eye.
+pub const WINDOW_HEIGHT: f32 = 476.0;
 
 /// The same colour with a different opacity.
 pub fn with_alpha(color: Rgba, alpha: f32) -> Rgba {

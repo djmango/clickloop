@@ -6,10 +6,10 @@
 //!
 //!     cargo run --example screenshot --features visual-test -- out.png [idle|running|stopped|error]
 
-#[cfg(target_os = "macos")]
-use gpui::VisualTestAppContext as VisualContext;
 #[cfg(not(target_os = "macos"))]
 use gpui::HeadlessAppContext as VisualContext;
+#[cfg(target_os = "macos")]
+use gpui::VisualTestAppContext as VisualContext;
 
 #[allow(dead_code)]
 #[path = "../src/state.rs"]
@@ -90,9 +90,8 @@ fn main() {
         let platform = gpui_platform::current_platform(true);
         let text_system = platform.text_system();
         VisualContext::with_platform(text_system, std::sync::Arc::new(()), || {
-            Some(Box::new(
-                gpui_wgpu::WgpuHeadlessRenderer::new().ok()?,
-            ) as Box<dyn gpui::PlatformHeadlessRenderer>)
+            Some(Box::new(gpui_wgpu::WgpuHeadlessRenderer::new().ok()?)
+                as Box<dyn gpui::PlatformHeadlessRenderer>)
         })
     };
 
@@ -101,16 +100,12 @@ fn main() {
 
     #[cfg(target_os = "macos")]
     let handle = cx
-        .open_offscreen_window(size(width, height), |_, cx| {
-            cx.new(|_| window)
-        })
+        .open_offscreen_window(size(width, height), |_, cx| cx.new(|_| window))
         .expect("failed to open the offscreen window");
 
     #[cfg(not(target_os = "macos"))]
     let handle = cx
-        .open_window(size(width, height), |_, cx| {
-            cx.new(|_| window)
-        })
+        .open_window(size(width, height), |_, cx| cx.new(|_| window))
         .expect("failed to open the headless window");
 
     let handle = handle.into();
